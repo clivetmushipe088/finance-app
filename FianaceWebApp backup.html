@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIC Logistics — Finance</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c10;--surface:#0d1117;--card:#161b22;--card2:#1c2128;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --text:#e6edf3;--muted:#7d8590;--muted2:#a8b3bf;
+  --green:#3fb950;--green-dim:rgba(63,185,80,0.12);
+  --blue:#58a6ff;--blue-dim:rgba(88,166,255,0.12);
+  --red:#f85149;--red-dim:rgba(248,81,73,0.12);
+  --orange:#d29922;--orange-dim:rgba(210,153,34,0.12);
+  --purple:#bc8cff;--purple-dim:rgba(188,140,255,0.12);
+  --yellow:#e3b341;--yellow-dim:rgba(227,179,65,0.12);
+  --sea:#1f6feb;--sea-dim:rgba(31,111,235,0.15);
+  --air:#8957e5;--air-dim:rgba(137,87,229,0.15);
+  --road:#bf8700;--road-dim:rgba(191,135,0,0.15);
+  --clear:#1a7f37;--clear-dim:rgba(26,127,55,0.15);
+  --radius:8px;--font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --sidebar:224px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
+#app{display:flex;height:100vh;overflow:hidden}
+
+.sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.logo-tag{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--yellow);text-transform:uppercase;margin-bottom:2px}
+.logo-name{font-size:14px;font-weight:700;color:var(--text)}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.nav-section{padding:10px 8px 2px;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;margin:1px 4px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted2);transition:all .12s;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.nav-item.active{background:var(--yellow-dim);color:var(--yellow)}
+.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.nav-item .count{margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--muted);background:rgba(255,255,255,0.06);padding:1px 6px;border-radius:10px}
+.sidebar-footer{margin-top:auto;padding:12px 12px 16px;border-top:1px solid var(--border)}
+.footer-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.footer-val{font-size:12px;font-weight:500;color:var(--muted2);font-family:var(--mono)}
+
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.page-title{font-size:16px;font-weight:700}
+.topbar-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.content{flex:1;overflow-y:auto;padding:20px 24px}
+
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.stat-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.stat-value{font-size:24px;font-weight:700;color:var(--text);font-family:var(--mono);line-height:1}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:3px}
+
+.filter-bar{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none}
+.search-input{width:100%;padding:7px 10px 7px 32px;background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .15s}
+.search-input:focus{border-color:var(--yellow)}
+.search-input::placeholder{color:var(--muted)}
+.filter-select{background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;cursor:pointer}
+.filter-select:focus{border-color:var(--yellow)}
+.filter-select option{background:var(--card)}
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .12s}
+.btn-yellow{background:var(--yellow);color:#000}
+.btn-yellow:hover{background:#f0bb4a}
+.btn-ghost{background:transparent;color:var(--muted2);border:1px solid var(--border2)}
+.btn-ghost:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.btn-yellow{background:var(--yellow);color:#000}
+.btn-yellow:hover{background:#f0bb4a}
+.btn-sm{padding:4px 10px;font-size:11px}
+
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:separate;border-spacing:0 6px}
+th{text-align:left;padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+td{padding:11px 12px;font-size:12px;color:var(--text);vertical-align:middle}
+tbody tr{transition:background .1s,box-shadow .1s;cursor:pointer;background:var(--card2);box-shadow:0 1px 4px rgba(0,0,0,0.22);border-radius:8px}
+tbody tr:hover{background:var(--card2);box-shadow:0 2px 8px rgba(0,0,0,0.32);filter:brightness(1.08)}
+tbody tr td:first-child{border-radius:8px 0 0 8px}
+tbody tr td:last-child{border-radius:0 8px 8px 0}
+.td-mono{font-family:var(--mono);font-size:11px;color:var(--muted2)}
+.td-bold{font-weight:600}
+.td-dim{color:var(--muted);font-size:11px}
+.td-truncate{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap}
+.b-green{background:var(--green-dim);color:var(--green)}
+.b-blue{background:var(--blue-dim);color:var(--blue)}
+.b-red{background:var(--red-dim);color:var(--red)}
+.b-orange{background:var(--orange-dim);color:var(--orange)}
+.b-purple{background:var(--purple-dim);color:var(--purple)}
+.b-yellow{background:var(--yellow-dim);color:var(--yellow)}
+.b-gray{background:rgba(255,255,255,0.07);color:var(--muted2)}
+.b-sea{background:var(--sea-dim);color:var(--blue)}
+.b-air{background:var(--air-dim);color:var(--purple)}
+.b-road{background:var(--road-dim);color:var(--orange)}
+.b-clear{background:var(--clear-dim);color:var(--green)}
+
+.panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:89;opacity:0;pointer-events:none;transition:opacity .25s}
+.panel-overlay.open{opacity:1;pointer-events:all}
+.detail-panel{position:fixed;top:0;right:-500px;width:480px;height:100vh;background:var(--card);border-left:1px solid var(--border2);z-index:90;overflow-y:auto;transition:right .28s ease;box-shadow:-16px 0 50px rgba(0,0,0,.5)}
+.detail-panel.open{right:0}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);z-index:1}
+.panel-title{font-size:15px;font-weight:700;font-family:var(--mono)}
+.modal-close{width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,0.05);border:none;color:var(--muted2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.modal-close:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.panel-body{padding:18px 22px}
+.panel-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:16px 0 8px}
+.panel-section:first-child{margin-top:0}
+.detail-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);gap:12px}
+.detail-row:last-child{border-bottom:none}
+.detail-key{font-size:11px;color:var(--muted);flex-shrink:0;width:140px}
+.detail-val{font-size:12px;color:var(--text);text-align:right;font-family:var(--mono)}
+
+.toast-container{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:slideIn .2s ease;max-width:300px;cursor:pointer}
+.toast.success{border-color:rgba(63,185,80,.3)}
+.toast.error{border-color:rgba(248,81,73,.3)}
+@keyframes slideIn{from{transform:translateX(16px);opacity:0}}
+
+.loading-state{text-align:center;padding:60px}
+.spinner{width:24px;height:24px;margin:0 auto 10px;border:2px solid var(--border2);border-top-color:var(--yellow);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-icon{font-size:32px;margin-bottom:10px}
+.empty-title{font-size:13px;font-weight:600;color:var(--muted2);margin-bottom:4px}
+
+/* Invoice highlight row */
+tbody tr.needs-invoice{background:rgba(227,179,65,0.07) !important;box-shadow:0 1px 4px rgba(227,179,65,0.15)}
+tbody tr.needs-invoice:hover{background:rgba(227,179,65,0.12) !important}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+
+/* ── LIGHT MODE ── */
+body.light {
+  --bg:        #f5f5f7;
+  --surface:   #ffffff;
+  --card:      #ffffff;
+  --card2:     #f0f0f3;
+  --border:    rgba(0,0,0,0.08);
+  --border2:   rgba(0,0,0,0.14);
+  --text:      #1a1a2e;
+  --muted:     #8a8a9a;
+  --muted2:    #555566;
+  --sea-dim:   rgba(31,111,235,0.1);
+  --air-dim:   rgba(137,87,229,0.1);
+  --road-dim:  rgba(191,135,0,0.1);
+  --clear-dim: rgba(26,127,55,0.1);
+  --green-dim: rgba(34,197,94,0.1);
+  --blue-dim:  rgba(59,130,246,0.1);
+  --red-dim:   rgba(239,68,68,0.1);
+  --orange-dim:rgba(249,115,22,0.1);
+  --yellow-dim:rgba(234,179,8,0.1);
+  --purple-dim:rgba(168,85,247,0.1);
+  --teal-dim:  rgba(20,184,166,0.1);
+}
+body.light .sidebar { box-shadow: 2px 0 12px rgba(0,0,0,0.06); }
+body.light tbody tr { box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+body.light tbody tr:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.14); filter: brightness(0.97); }
+body.light table th { background: #f5f5f7; }
+body.light .modal, body.light .detail-panel, body.light .confirm-box { box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+body.light input, body.light select, body.light textarea { background: #f5f5f7; }
+body.light .filter-select { background: #f5f5f7; }
+body.light .filter-select option { background: #ffffff; }
+body.light select option { background: #ffffff; }
+.theme-btn { font-size: 16px; padding: 5px 8px; line-height: 1; cursor: pointer; background: transparent; border: 1px solid var(--border2); border-radius: 8px; color: var(--muted2); transition: all .15s; }
+.theme-btn:hover { background: rgba(128,128,128,0.1); color: var(--text); }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-tag">PIC</div>
+    <div class="logo-name">Finance</div>
+    <div class="logo-sub">Invoice Tracking</div>
+  </div>
+  <div class="nav-section">Views</div>
+  <div class="nav-item active" data-page="all" onclick="navigate('all')">
+    <div class="nav-dot" style="background:var(--muted)"></div>
+    <span>All Shipments</span>
+    <span class="count" id="cnt-all">0</span>
+  </div>
+  <div class="nav-item" data-page="needs-invoice" onclick="navigate('needs-invoice')">
+    <div class="nav-dot" style="background:var(--yellow)"></div>
+    <span>Needs Invoicing</span>
+    <span class="count" id="cnt-needs">0</span>
+  </div>
+  <div class="nav-item" data-page="invoice-sent" onclick="navigate('invoice-sent')">
+    <div class="nav-dot" style="background:var(--blue)"></div>
+    <span>Invoice Sent</span>
+    <span class="count" id="cnt-sent">0</span>
+  </div>
+  <div class="nav-item" data-page="paid" onclick="navigate('paid')">
+    <div class="nav-dot" style="background:var(--green)"></div>
+    <span>Paid</span>
+    <span class="count" id="cnt-paid">0</span>
+  </div>
+  <div class="nav-section">By Type</div>
+  <div class="nav-item" data-page="sea" onclick="navigate('sea')">
+    <div class="nav-dot" style="background:var(--sea)"></div>
+    <span>Sea Freight</span>
+    <span class="count" id="cnt-sea">0</span>
+  </div>
+  <div class="nav-item" data-page="air" onclick="navigate('air')">
+    <div class="nav-dot" style="background:var(--air)"></div>
+    <span>Air Freight</span>
+    <span class="count" id="cnt-air">0</span>
+  </div>
+  <div class="nav-item" data-page="road" onclick="navigate('road')">
+    <div class="nav-dot" style="background:var(--road)"></div>
+    <span>Road Freight</span>
+    <span class="count" id="cnt-road">0</span>
+  </div>
+  <div class="nav-item" data-page="clearing" onclick="navigate('clearing')">
+    <div class="nav-dot" style="background:var(--clear)"></div>
+    <span>Clearing Only</span>
+    <span class="count" id="cnt-clear">0</span>
+  </div>
+  <div class="sidebar-footer">
+    <div class="footer-label">Last sync</div>
+    <div class="footer-val" id="last-sync">—</div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="page-title" id="page-title">All Shipments</div>
+      <div class="topbar-badge b-gray" id="page-badge"></div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Refresh</button>
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+    </div>
+  </div>
+  <div class="content" id="main-content">
+    <div class="loading-state"><div class="spinner"></div>Loading...</div>
+  </div>
+</main>
+</div>
+
+<!-- PANEL -->
+<div class="panel-overlay" id="panel-overlay" onclick="closePanel()"></div>
+<div class="detail-panel" id="detail-panel">
+  <div class="panel-header">
+    <div class="panel-title" id="panel-title"></div>
+    <button class="modal-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="panel-body" id="panel-body"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ════════════════════════════════════════
+// CONFIG — replace with your values
+// ════════════════════════════════════════
+const CONFIG = {
+  apiKey: 'patjSLVYYGfaUaTyE.586271b3280eb8fcc63d575158f3221ed7fcc6735a744706cae0a4efba40c224',
+  baseId: 'appypkTo1RMkbIjKl',
+  base:   'https://api.airtable.com/v0',
+  tables: {
+    sea:        'Sea Freight',
+    air:        'Air Freight',
+    road:       'Road Freight',
+    clearing:   'Clearing Only',
+    containers: 'Containers',
+  }
+};
+
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+const S = {
+  page: 'all',
+  all: [],
+  containers: [],
+  loading: false,
+  error: null,
+  search: '',
+  invoiceFilter: 'all',
+};
+
+const TYPE_META = {
+  sea:      { label:'Sea Freight',   badge:'b-sea',   icon:'🚢' },
+  air:      { label:'Air Freight',   badge:'b-air',   icon:'✈️' },
+  road:     { label:'Road Freight',  badge:'b-road',  icon:'🚛' },
+  clearing: { label:'Clearing Only', badge:'b-clear', icon:'🏛️' },
+};
+
+const INVOICE_STATUSES = ['Not Invoiced','Invoice Sent','Partially Paid','Paid'];
+
+// ════════════════════════════════════════
+// API
+// ════════════════════════════════════════
+async function atFetch(table) {
+  let all = [], offset = null;
+  do {
+    const url = `${CONFIG.base}/${CONFIG.baseId}/${encodeURIComponent(table)}${offset?`?offset=${offset}`:''}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    let r;
+    try {
+      r = await fetch(url, { headers: { Authorization:`Bearer ${CONFIG.apiKey}` }, signal: controller.signal });
+    } finally { clearTimeout(timer); }
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message||`HTTP ${r.status}`); }
+    const d = await r.json();
+    all.push(...d.records);
+    offset = d.offset;
+  } while (offset);
+  return all;
+}
+
+async function atUpdate(table, id, fields) {
+  const r = await fetch(`${CONFIG.base}/${CONFIG.baseId}/${encodeURIComponent(table)}/${id}`, {
+    method:'PATCH',
+    headers:{ Authorization:`Bearer ${CONFIG.apiKey}`, 'Content-Type':'application/json' },
+    body:JSON.stringify({fields})
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error?.message||`HTTP ${r.status}`);
+  return d;
+}
+
+// ════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════
+function sa(v) { if(!v)return''; return Array.isArray(v)?(v[0]||''):v; }
+
+function norm(r, type) {
+  const f = r.fields;
+  return {
+    id: r.id, type,
+    fileNumber:    sa(f['File Number'])||sa(f['FILE NUMBER'])||'',
+    clientName:    sa(f['Client Name'])||sa(f['CLIENT'])||'',
+    containerStatuses: sa(f['Container Statuses'])||'',
+    invoiceStatus: sa(f['Invoice Status'])||'Not Invoiced',
+    goods:         sa(f['Description of Goods'])||sa(f['GOODS DESCRIPTIONS'])||sa(f['GOODS DISCRIPTION'])||'',
+    truckNo:       sa(f['Truck No'])||sa(f['TRUCK NO'])||'',
+    trucking:      sa(f['Trucking Company'])||sa(f['TRANSPORTER'])||sa(f['TRUCKING COMPANY'])||'',
+    container:     sa(f['Container Number'])||sa(f['CONTAINER NUMBER/TYPE'])||'',
+    airwaybill:    sa(f['Airwaybill'])||'',
+    bl:            sa(f['BL Number'])||sa(f['BL NO'])||sa(f['BL'])||'',
+    shippingLine:  sa(f['Shipping Line'])||sa(f['SHIPPING LINE'])||'',
+    airline:       sa(f['Airline'])||sa(f['AIRLINE'])||'',
+    pol:           sa(f['Port of Loading'])||sa(f['POL'])||'',
+    pod:           sa(f['POD'])||'',
+    docsRcvd:      sa(f['Docs Received'])||sa(f['DOCS RECEIPT'])||sa(f['DOCS RCVD'])||'',
+    dateOffload:   sa(f['Date of Offload'])||sa(f['DATE OF CONTAINER OFFLOAD'])||sa(f['DATE OF OFFLOAD'])||'',
+    dateDelivered: sa(f['Date Delivered'])||'',
+    destination:   sa(f['Destination'])||'',
+    remarks:       sa(f['Remarks'])||sa(f['REMARKS'])||'',
+    status:        sa(f['Status'])||'',
+  };
+}
+
+async function loadAll() {
+  S.loading = true;
+  S.error = null;
+  renderContent();
+  try {
+    const [sea, air, road, clearing] = await Promise.all([
+      atFetch(CONFIG.tables.sea),
+      atFetch(CONFIG.tables.air),
+      atFetch(CONFIG.tables.road),
+      atFetch(CONFIG.tables.clearing),
+    ]);
+    S.all = [
+      ...sea.map(r=>norm(r,'sea')),
+      ...air.map(r=>norm(r,'air')),
+      ...road.map(r=>norm(r,'road')),
+      ...clearing.map(r=>norm(r,'clearing')),
+    ].filter(r=>r.fileNumber).sort((a,b)=>(a.fileNumber||'').localeCompare(b.fileNumber||'', undefined, {numeric:true, sensitivity:'base'}));
+    // Containers fetch is best-effort — won't block the rest of the app
+    try {
+      const ctrs = await atFetch(CONFIG.tables.containers);
+      S.containers = ctrs.map(r => ({
+        id:          r.id,
+        fileNumber:  (r.fields['File Number']||'').trim(),
+        containerNo: r.fields['Container No']||'',
+        size:        r.fields['Size']||'',
+        status:      r.fields['Status']||'',
+        truckNo:     r.fields['Truck No']||'',
+        trucking:    r.fields['Trucking Company']||'',
+        notes:       r.fields['Notes']||'',
+      }));
+    } catch(e) { S.containers = []; }
+    updateCounts();
+    document.getElementById('last-sync').textContent = new Date().toLocaleTimeString();
+  } catch(e) {
+    S.error = e.name === 'AbortError' ? 'Request timed out. Check your API key and Base ID.' : e.message;
+    toast('⚠️ '+S.error, 'error');
+  } finally {
+    S.loading = false;
+    renderContent();
+  }
+}
+
+async function refreshAll() { await loadAll(); toast('✅ Data refreshed'); }
+
+function updateCounts() {
+  const all = S.all;
+  document.getElementById('cnt-all').textContent   = all.length;
+  document.getElementById('cnt-needs').textContent = all.filter(r=>needsInvoicing(r)).length;
+  document.getElementById('cnt-sent').textContent  = all.filter(r=>r.invoiceStatus==='Invoice Sent').length;
+  document.getElementById('cnt-paid').textContent  = all.filter(r=>r.invoiceStatus==='Paid').length;
+  document.getElementById('cnt-sea').textContent   = all.filter(r=>r.type==='sea').length;
+  document.getElementById('cnt-air').textContent   = all.filter(r=>r.type==='air').length;
+  document.getElementById('cnt-road').textContent  = all.filter(r=>r.type==='road').length;
+  document.getElementById('cnt-clear').textContent = all.filter(r=>r.type==='clearing').length;
+}
+
+function needsInvoicing(r) {
+  const inv = r.invoiceStatus||'';
+  return !inv || inv==='Not Invoiced' || inv==='';
+}
+
+// ════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════
+function navigate(page) {
+  S.page = page;
+  S.search = '';
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.page===page));
+  loadAll();
+}
+
+// ════════════════════════════════════════
+// BADGES
+// ════════════════════════════════════════
+function statusBadge(s) {
+  const v=(s||'').toLowerCase();
+  if(v.includes('deliver'))  return `<span class="badge b-green">${s}</span>`;
+  if(v.includes('transit'))  return `<span class="badge b-blue">${s}</span>`;
+  if(v.includes('port'))     return `<span class="badge b-purple">${s}</span>`;
+  if(v.includes('clearance')||v.includes('clearing')) return `<span class="badge b-orange">${s}</span>`;
+  if(v.includes('awaiting')) return `<span class="badge b-yellow">${s}</span>`;
+  if(v.includes('hold'))     return `<span class="badge b-red">${s}</span>`;
+  return `<span class="badge b-gray">${s||'TBA'}</span>`;
+}
+
+function invoiceBadge(s) {
+  if(!s||s==='Not Invoiced'||s==='') return `<span class="badge b-gray">${s||'Not Invoiced'}</span>`;
+  const v=(s||'').toLowerCase();
+  if(v.includes('paid')&&!v.includes('partial')) return `<span class="badge b-green">${s}</span>`;
+  if(v.includes('partial'))  return `<span class="badge b-yellow">${s}</span>`;
+  if(v.includes('sent'))     return `<span class="badge b-blue">${s}</span>`;
+  return `<span class="badge b-gray">${s}</span>`;
+}
+
+function fmtDate(d) { if(!d)return'—'; try{return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}catch{return d} }
+
+// ════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════
+function getPageData() {
+  const pageMap = {
+    'all':           S.all,
+    'needs-invoice': S.all.filter(r=>needsInvoicing(r)),
+    'invoice-sent':  S.all.filter(r=>r.invoiceStatus==='Invoice Sent'),
+    'paid':          S.all.filter(r=>r.invoiceStatus==='Paid'),
+    'sea':           S.all.filter(r=>r.type==='sea'),
+    'air':           S.all.filter(r=>r.type==='air'),
+    'road':          S.all.filter(r=>r.type==='road'),
+    'clearing':      S.all.filter(r=>r.type==='clearing'),
+  };
+  return pageMap[S.page] || S.all;
+}
+
+function getPageTitle() {
+  const titles = {
+    'all':'All Shipments','needs-invoice':'Needs Invoicing',
+    'invoice-sent':'Invoice Sent','paid':'Paid',
+    'sea':'Sea Freight','air':'Air Freight','road':'Road Freight','clearing':'Clearing Only'
+  };
+  return titles[S.page]||'All Shipments';
+}
+
+function renderContent() {
+  const el = document.getElementById('main-content');
+  if (S.loading) { el.innerHTML=`<div class="loading-state"><div class="spinner"></div>Loading from Airtable...</div>`; return; }
+  if (S.error) { el.innerHTML=`<div class="loading-state"><div style="font-size:32px;margin-bottom:12px">⚠️</div><div style="color:var(--red);margin-bottom:16px">${S.error}</div><button class="btn btn-yellow" onclick="loadAll()">↻ Retry</button></div>`; return; }
+  const data = getPageData();
+  document.getElementById('page-title').textContent = getPageTitle();
+  document.getElementById('page-badge').textContent = `${data.length} files`;
+
+  // Filter by search
+  const q = S.search.toLowerCase();
+  const filtered = data.filter(r => !q || [r.fileNumber,r.clientName,r.container,r.airwaybill,r.truckNo,r.trucking,r.goods].some(v=>(v||'').toLowerCase().includes(q)));
+
+  const notInv  = S.all.filter(r=>needsInvoicing(r)).length;
+  const invSent = S.all.filter(r=>r.invoiceStatus==='Invoice Sent').length;
+  const partial = S.all.filter(r=>r.invoiceStatus==='Partially Paid').length;
+  const paid    = S.all.filter(r=>r.invoiceStatus==='Paid').length;
+
+  el.innerHTML = `
+  <div class="stats-row">
+    <div class="stat-card" style="${notInv>0?'border-color:rgba(227,179,65,.3)':''}">
+      <div class="stat-label">Needs Invoicing</div>
+      <div class="stat-value" style="${notInv>0?'color:var(--yellow)':''}">${notInv}</div>
+      <div class="stat-sub">Action required</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Invoice Sent</div>
+      <div class="stat-value" style="color:var(--blue)">${invSent}</div>
+      <div class="stat-sub">Awaiting payment</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Partially Paid</div>
+      <div class="stat-value" style="color:var(--yellow)">${partial}</div>
+      <div class="stat-sub">Incomplete</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Paid</div>
+      <div class="stat-value" style="color:var(--green)">${paid}</div>
+      <div class="stat-sub">Completed</div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <svg width="13" height="13" fill="none" viewBox="0 0 16 16"><path fill="#7d8590" d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.85-3.85-.017.017zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
+      <input class="search-input" id="fin-search" placeholder="Search file no., client, truck no., goods..." value="${S.search}">
+    </div>
+    <select class="filter-select" id="inv-filter">
+      <option value="all" ${S.invoiceFilter==='all'?'selected':''}>All Invoice Statuses</option>
+      ${INVOICE_STATUSES.map(s=>`<option value="${s}" ${S.invoiceFilter===s?'selected':''}>${s}</option>`).join('')}
+    </select>
+  </div>
+
+  <div class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>File No.</th>
+            <th>Client</th>
+            <th>Container</th>
+            <th>Size</th>
+            <th>Truck No.</th>
+            <th>BL No.</th>
+            <th>Shipping Line</th>
+            <th>POL</th>
+            <th>POD</th>
+            <th>Status</th>
+            <th>Invoice</th>
+            <th>Docs Rcvd</th>
+          </tr>
+        </thead>
+        <tbody id="fin-tbody">${renderRows(filtered)}</tbody>
+      </table>
+    </div>
+  </div>`;
+
+  document.getElementById('fin-search').addEventListener('input', e => { S.search=e.target.value; rerenderTable(); });
+  document.getElementById('inv-filter').addEventListener('change', e => { S.invoiceFilter=e.target.value; rerenderTable(); });
+}
+
+const CTR_COUNT_WORDS = ['','one','two','three','four','five','six','seven','eight','nine','ten'];
+function ctrCountLabel(n) { return n <= 10 ? CTR_COUNT_WORDS[n] : n; }
+
+function renderRows(rows) {
+  if (!rows.length) return `<tr><td colspan="12"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No records match your search</div></div></td></tr>`;
+  return rows.map(r => {
+    const highlight = needsInvoicing(r) ? 'needs-invoice' : '';
+    const typeBadge = `<span class="badge ${TYPE_META[r.type].badge}" style="font-size:10px">${TYPE_META[r.type].icon}</span>`;
+
+    if (r.type === 'sea') {
+      const ctrs = containersForFile(r.fileNumber);
+      const n = ctrs.length;
+      const ctrNos      = n ? ctrs.map(c=>`<div class="td-mono" style="margin-bottom:3px">${c.containerNo||'—'}</div>`).join('') : '<span class="td-mono">—</span>';
+      const ctrSizes    = n ? ctrs.map(c=>`<div class="td-dim" style="margin-bottom:3px">${c.size||'—'}</div>`).join('') : '—';
+      const ctrTrucks   = n ? ctrs.map(c=>`<div class="td-mono" style="margin-bottom:3px">${c.truckNo||'—'}</div>`).join('') : '—';
+      const ctrStatuses = n ? ctrs.map(c=>`<div style="margin-bottom:3px">${statusBadge(c.status||'TBA')}</div>`).join('') : statusBadge(r.status||'TBA');
+      const fileLabel   = n ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">(${ctrCountLabel(n)} container${n!==1?'s':''})</div>` : '';
+      return `<tr class="${highlight}" onclick="openPanel('${r.id}')">
+        <td class="td-mono">${r.fileNumber}${fileLabel}</td>
+        <td class="td-bold">${r.clientName||'—'}</td>
+        <td>${ctrNos}</td>
+        <td class="td-dim">${ctrSizes}</td>
+        <td class="td-mono">${ctrTrucks}</td>
+        <td class="td-mono">${r.bl||'—'}</td>
+        <td class="td-dim td-truncate">${r.shippingLine||'—'}</td>
+        <td class="td-dim">${r.pol||'—'}</td>
+        <td class="td-dim">${r.pod||'—'}</td>
+        <td>${ctrStatuses}</td>
+        <td>${invoiceBadge(r.invoiceStatus)}</td>
+        <td class="td-dim">${fmtDate(r.docsRcvd)}</td>
+      </tr>`;
+    }
+
+    if (r.type === 'air') {
+      return `<tr class="${highlight}" onclick="openPanel('${r.id}')">
+        <td class="td-mono">${r.fileNumber}<div style="font-size:10px;color:var(--muted);margin-top:2px">${typeBadge} Air</div></td>
+        <td class="td-bold">${r.clientName||'—'}</td>
+        <td class="td-mono" colspan="2">${r.airwaybill||'—'}</td>
+        <td class="td-dim">—</td>
+        <td class="td-mono">—</td>
+        <td class="td-dim td-truncate">${r.airline||'—'}</td>
+        <td class="td-dim">${r.pol||'—'}</td>
+        <td class="td-dim">${r.pod||'—'}</td>
+        <td>${statusBadge(r.status||'TBA')}</td>
+        <td>${invoiceBadge(r.invoiceStatus)}</td>
+        <td class="td-dim">${fmtDate(r.dateDelivered||r.docsRcvd)}</td>
+      </tr>`;
+    }
+
+    return `<tr class="${highlight}" onclick="openPanel('${r.id}')">
+      <td class="td-mono">${r.fileNumber}<div style="font-size:10px;color:var(--muted);margin-top:2px">${typeBadge} ${TYPE_META[r.type].label}</div></td>
+      <td class="td-bold">${r.clientName||'—'}</td>
+      <td class="td-mono td-truncate" colspan="2">${r.goods||'—'}</td>
+      <td class="td-mono">${r.truckNo||'—'}</td>
+      <td class="td-mono">${r.bl||'—'}</td>
+      <td class="td-dim td-truncate">${r.trucking||'—'}</td>
+      <td class="td-dim">${r.pol||'—'}</td>
+      <td class="td-dim">${r.pod||'—'}</td>
+      <td>${statusBadge(r.status||'TBA')}</td>
+      <td>${invoiceBadge(r.invoiceStatus)}</td>
+      <td class="td-dim">${fmtDate(r.dateDelivered||r.dateOffload)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function rerenderTable() {
+  const data = getPageData();
+  const q = S.search.toLowerCase();
+  let filtered = data.filter(r => !q || [r.fileNumber,r.clientName,r.container,r.airwaybill,r.truckNo,r.trucking,r.goods,r.bl,r.shippingLine].some(v=>(v||'').toLowerCase().includes(q)));
+  if (S.invoiceFilter !== 'all') filtered = filtered.filter(r => r.invoiceStatus === S.invoiceFilter);
+  const tbody = document.getElementById('fin-tbody');
+  if (tbody) tbody.innerHTML = renderRows(filtered);
+}
+
+// ════════════════════════════════════════
+// PANEL
+// ════════════════════════════════════════
+function containersForFile(fileNumber) {
+  return S.containers.filter(c => c.fileNumber.toLowerCase() === (fileNumber||'').toLowerCase());
+}
+
+function finContainerCards(fileNumber) {
+  const ctrs = containersForFile(fileNumber);
+  if (!ctrs.length) return `<div style="color:var(--muted);font-size:12px;padding:4px 0">No containers linked.</div>`;
+  return ctrs.map(c => `
+    <div style="background:var(--surface);border-radius:7px;padding:8px 10px;margin-bottom:6px;border:1px solid var(--border2)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600">📦 ${c.containerNo||'—'}</div>
+        ${c.status ? `<span class="badge b-gray" style="font-size:10px">${c.status}</span>` : ''}
+      </div>
+      ${c.size ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${c.size}</div>` : ''}
+      ${c.truckNo||c.trucking ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">🚛 ${[c.truckNo,c.trucking].filter(Boolean).join(' · ')}</div>` : ''}
+      ${c.notes ? `<div style="font-size:11px;color:var(--muted2);margin-top:2px;font-style:italic">${c.notes}</div>` : ''}
+    </div>`).join('');
+}
+
+function openPanel(id) {
+  const r = S.all.find(x=>x.id===id);
+  if (!r) return;
+  const ctrs = containersForFile(r.fileNumber);
+  const containerSection = r.type === 'sea'
+    ? `<div class="panel-section">Containers (${ctrs.length})</div>${finContainerCards(r.fileNumber)}`
+    : '';
+  document.getElementById('panel-title').textContent = r.fileNumber;
+  document.getElementById('panel-body').innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <span class="badge ${TYPE_META[r.type].badge}">${TYPE_META[r.type].icon} ${TYPE_META[r.type].label}</span>
+      ${r.status ? `<span class="badge b-gray">${r.status}</span>` : ''}
+      ${invoiceBadge(r.invoiceStatus)}
+    </div>
+
+    <div class="panel-section">Invoice & Delivery</div>
+    ${[
+      ['Invoice Status', invoiceBadge(r.invoiceStatus)],
+      ['Date Delivered', fmtDate(r.dateDelivered||r.dateOffload)],
+    ].map(([k,v])=>`<div class="detail-row"><div class="detail-key">${k}</div><div class="detail-val">${v}</div></div>`).join('')}
+
+    <div class="panel-section">Update Invoice Status</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <select class="filter-select" id="panel-inv-status" style="flex:1">
+        ${INVOICE_STATUSES.map(s=>`<option value="${s}" ${r.invoiceStatus===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <button class="btn btn-yellow btn-sm" onclick="updateInvoiceStatus('${r.type}','${r.id}')">Save</button>
+    </div>
+
+    ${containerSection}
+
+    <div class="panel-section">Shipment Details</div>
+    ${[
+      ['Client', r.clientName||'—'],
+      ['Goods', r.goods||'—'],
+      ['Container / AWB', r.container||r.airwaybill||'—'],
+      ['BL', r.bl||'—'],
+      ['Port of Loading', r.pol||'—'],
+      ['Port of Discharge', r.pod||'—'],
+      ['Truck No.', r.truckNo||'—'],
+      ['Trucking Company', r.trucking||'—'],
+      ['Destination', r.destination||'—'],
+      ['Docs Received', fmtDate(r.docsRcvd)],
+      ['Remarks', r.remarks||'—'],
+    ].filter(([,v])=>v&&v!=='—').map(([k,v])=>`<div class="detail-row"><div class="detail-key">${k}</div><div class="detail-val">${v}</div></div>`).join('')}
+
+    <div style="margin-top:20px">
+      <button class="btn btn-ghost btn-sm" onclick="closePanel()">Close</button>
+    </div>`;
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('panel-overlay').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('detail-panel').classList.remove('open');
+  document.getElementById('panel-overlay').classList.remove('open');
+}
+
+// ════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════
+function toast(msg, type='success') {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className=`toast ${type}`;
+  el.textContent=msg;
+  el.onclick=()=>el.remove();
+  c.appendChild(el);
+  setTimeout(()=>el.remove(), type==='error'?8000:3500);
+}
+
+async function updateInvoiceStatus(type, id) {
+  const status = document.getElementById('panel-inv-status').value;
+  try {
+    await atUpdate(CONFIG.tables[type], id, { 'Invoice Status': status });
+    const rec = S.all.find(r=>r.id===id);
+    if (rec) rec.invoiceStatus = status;
+    updateCounts();
+    toast(`✅ Invoice status updated to "${status}"`);
+    closePanel();
+    renderContent();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ════════════════════════════════════════
+// INIT ════════════════════════════════════════
+loadAll();
+
+// ── THEME TOGGLE ──
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('pic-theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = isLight ? '🌙' : '☀️';
+}
+(function() {
+  if (localStorage.getItem('pic-theme') === 'light') {
+    document.body.classList.add('light');
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('theme-btn');
+      if (btn) btn.textContent = '🌙';
+    });
+  }
+})();
+
+</script>
+</body>
+</html>
