@@ -367,7 +367,50 @@ function norm(r, type) {
   };
 }
 
-async function loadAll() {
+const CACHE_KEY = 'pic-finance-cache';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function saveCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), all: data.all, containers: data.containers }));
+  } catch(e) { /* storage full or unavailable — silently skip */ }
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.ts > CACHE_TTL) return null; // stale
+    return parsed;
+  } catch(e) { return null; }
+}
+
+function cacheAge() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { ts } = JSON.parse(raw);
+    const secs = Math.round((Date.now() - ts) / 1000);
+    return secs < 60 ? `${secs}s ago` : `${Math.round(secs/60)}m ago`;
+  } catch(e) { return null; }
+}
+
+async function loadAll(forceRefresh = false) {
+  // ── Try cache first (skip on forceRefresh) ──────────────────────
+  if (!forceRefresh) {
+    const cached = loadCache();
+    if (cached) {
+      S.all        = cached.all;
+      S.containers = cached.containers;
+      updateCounts();
+      const age = cacheAge();
+      document.getElementById('last-sync').textContent = age ? `cached · ${age}` : 'cached';
+      renderContent();
+      return;
+    }
+  }
+
   S.loading = true;
   S.error = null;
   renderContent();
@@ -396,8 +439,10 @@ async function loadAll() {
         truckNo:     r.fields['Truck No']||'',
         trucking:    r.fields['Trucking Company']||'',
         notes:       r.fields['Notes']||'',
+        dateOffload: r.fields['Date of Offload']||'',
       }));
     } catch(e) { S.containers = []; }
+    saveCache({ all: S.all, containers: S.containers });
     updateCounts();
     document.getElementById('last-sync').textContent = new Date().toLocaleTimeString();
   } catch(e) {
@@ -409,7 +454,10 @@ async function loadAll() {
   }
 }
 
-async function refreshAll() { await loadAll(); toast('✅ Data refreshed'); }
+async function refreshAll() {
+  await loadAll(true); // bypass cache
+  toast('✅ Data refreshed');
+}
 
 function updateCounts() {
   const all = S.all;
@@ -435,7 +483,7 @@ function navigate(page) {
   S.page = page;
   S.search = '';
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.page===page));
-  loadAll();
+  renderContent(); // no re-fetch — data already in memory
 }
 
 // ════════════════════════════════════════
@@ -557,6 +605,7 @@ function renderContent() {
             <th>POD</th>
             <th>Status</th>
             <th>Invoice</th>
+            <th>Final Delivery</th>
             <th>Docs Rcvd</th>
           </tr>
         </thead>
@@ -573,7 +622,7 @@ const CTR_COUNT_WORDS = ['','one','two','three','four','five','six','seven','eig
 function ctrCountLabel(n) { return n <= 10 ? CTR_COUNT_WORDS[n] : n; }
 
 function renderRows(rows) {
-  if (!rows.length) return `<tr><td colspan="12"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No records match your search</div></div></td></tr>`;
+  if (!rows.length) return `<tr><td colspan="13"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No records match your search</div></div></td></tr>`;
   return rows.map(r => {
     const highlight = needsInvoicing(r) ? 'needs-invoice' : '';
     const typeBadge = `<span class="badge ${TYPE_META[r.type].badge}" style="font-size:10px">${TYPE_META[r.type].icon}</span>`;
@@ -585,6 +634,10 @@ function renderRows(rows) {
       const ctrSizes    = n ? ctrs.map(c=>`<div class="td-dim" style="margin-bottom:3px">${c.size||'—'}</div>`).join('') : '—';
       const ctrTrucks   = n ? ctrs.map(c=>`<div class="td-mono" style="margin-bottom:3px">${c.truckNo||'—'}</div>`).join('') : '—';
       const ctrStatuses = n ? ctrs.map(c=>`<div style="margin-bottom:3px">${statusBadge(c.status||'TBA')}</div>`).join('') : statusBadge(r.status||'TBA');
+      // Final Delivery: per-container Date of Offload from Containers table
+      const ctrOffloads = n
+        ? ctrs.map(c=>`<div class="td-dim" style="margin-bottom:3px">${fmtDate(c.dateOffload)}</div>`).join('')
+        : `<span class="td-dim">—</span>`;
       const fileLabel   = n ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">(${ctrCountLabel(n)} container${n!==1?'s':''})</div>` : '';
       return `<tr class="${highlight}" onclick="openPanel('${r.id}')">
         <td class="td-mono">${r.fileNumber}${fileLabel}</td>
@@ -598,6 +651,7 @@ function renderRows(rows) {
         <td class="td-dim">${r.pod||'—'}</td>
         <td>${ctrStatuses}</td>
         <td>${invoiceBadge(r.invoiceStatus)}</td>
+        <td class="td-dim">${ctrOffloads}</td>
         <td class="td-dim">${fmtDate(r.docsRcvd)}</td>
       </tr>`;
     }
@@ -614,7 +668,8 @@ function renderRows(rows) {
         <td class="td-dim">${r.pod||'—'}</td>
         <td>${statusBadge(r.status||'TBA')}</td>
         <td>${invoiceBadge(r.invoiceStatus)}</td>
-        <td class="td-dim">${fmtDate(r.dateDelivered||r.docsRcvd)}</td>
+        <td class="td-dim">${fmtDate(r.dateDelivered||r.dateOffload)}</td>
+        <td class="td-dim">${fmtDate(r.docsRcvd)}</td>
       </tr>`;
     }
 
@@ -630,6 +685,7 @@ function renderRows(rows) {
       <td>${statusBadge(r.status||'TBA')}</td>
       <td>${invoiceBadge(r.invoiceStatus)}</td>
       <td class="td-dim">${fmtDate(r.dateDelivered||r.dateOffload)}</td>
+      <td class="td-dim">${fmtDate(r.docsRcvd)}</td>
     </tr>`;
   }).join('');
 }
@@ -661,6 +717,7 @@ function finContainerCards(fileNumber) {
       </div>
       ${c.size ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${c.size}</div>` : ''}
       ${c.truckNo||c.trucking ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">🚛 ${[c.truckNo,c.trucking].filter(Boolean).join(' · ')}</div>` : ''}
+      ${c.dateOffload ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">📅 Offload: ${fmtDate(c.dateOffload)}</div>` : ''}
       ${c.notes ? `<div style="font-size:11px;color:var(--muted2);margin-top:2px;font-style:italic">${c.notes}</div>` : ''}
     </div>`).join('');
 }
@@ -683,7 +740,8 @@ function openPanel(id) {
     <div class="panel-section">Invoice & Delivery</div>
     ${[
       ['Invoice Status', invoiceBadge(r.invoiceStatus)],
-      ['Date Delivered', fmtDate(r.dateDelivered||r.dateOffload)],
+      ['Final Delivery', fmtDate(r.dateDelivered||r.dateOffload)],
+      ['Docs Received', fmtDate(r.docsRcvd)],
     ].map(([k,v])=>`<div class="detail-row"><div class="detail-key">${k}</div><div class="detail-val">${v}</div></div>`).join('')}
 
     <div class="panel-section">Update Invoice Status</div>
@@ -750,7 +808,8 @@ async function updateInvoiceStatus(type, id) {
 }
 
 // ════════════════════════════════════════
-// INIT ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
 loadAll();
 
 // ── THEME TOGGLE ──
