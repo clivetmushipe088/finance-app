@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PIC Logistics — Finance</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -140,6 +141,47 @@ tbody tr.needs-invoice:hover{background:rgba(227,179,65,0.12) !important}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
 
+/* ── EXPORT MODAL ── */
+.export-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:150;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:center;justify-content:center}
+.export-overlay.open{opacity:1;pointer-events:all}
+.export-modal{background:var(--card);border:1px solid var(--border2);border-radius:12px;width:520px;max-width:calc(100vw - 40px);max-height:82vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.65);animation:modalIn .18s ease}
+@keyframes modalIn{from{transform:scale(.97) translateY(6px);opacity:0}}
+.export-modal-hd{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)}
+.export-modal-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.export-modal-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.export-toolbar{display:flex;align-items:center;gap:8px;padding:12px 22px;border-bottom:1px solid var(--border)}
+.export-count-label{font-size:11px;color:var(--muted);margin-left:auto;font-family:var(--mono)}
+.export-body{flex:1;overflow-y:auto;padding:8px 14px}
+.export-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;cursor:pointer;transition:background .1s;border:1px solid transparent;margin-bottom:2px;user-select:none}
+.export-item:hover{background:rgba(255,255,255,.04)}
+.export-item.sel{background:rgba(227,179,65,.08);border-color:rgba(227,179,65,.18)}
+.export-item input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--yellow);flex-shrink:0}
+.export-item-fn{font-size:12px;font-family:var(--mono);font-weight:600;color:var(--text)}
+.export-item-client{font-size:11px;color:var(--muted);margin-left:auto;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.export-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.export-fields-preview{display:flex;flex-wrap:wrap;gap:4px;padding:10px 22px 6px;border-bottom:1px solid var(--border)}
+.export-field-tag{font-size:10px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,.06);color:var(--muted2)}
+
+.btn-export{background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.25)}
+.btn-export:hover{background:rgba(63,185,80,.2);color:#4ecc62}
+
+body.light .export-item.sel{background:rgba(180,130,10,.07);}
+body.light .export-field-tag{background:rgba(0,0,0,.06);color:#555}
+
+/* ── DATE RANGE SECTION ── */
+.export-date-section{padding:10px 22px 12px;border-bottom:1px solid var(--border)}
+.export-date-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.export-date-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);white-space:nowrap;width:68px;flex-shrink:0}
+.export-date-input{background:var(--card2);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .15s;flex:1;min-width:120px}
+.export-date-input:focus{border-color:var(--yellow)}
+.export-date-sep{color:var(--muted);font-size:12px;flex-shrink:0}
+.export-presets{display:flex;gap:4px;flex-wrap:wrap}
+.preset-btn{padding:3px 9px;border-radius:5px;font-size:10px;font-weight:600;letter-spacing:.03em;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--muted2);transition:all .12s;white-space:nowrap}
+.preset-btn:hover{background:rgba(255,255,255,.06);color:var(--text);border-color:var(--muted)}
+.preset-btn.active{background:var(--yellow-dim);color:var(--yellow);border-color:rgba(227,179,65,.4)}
+body.light .export-date-input{background:#f0f0f3}
+body.light .preset-btn.active{background:rgba(234,179,8,.12)}
+
 /* ── LIGHT MODE ── */
 body.light {
   --bg:        #f5f5f7;
@@ -241,6 +283,7 @@ body.light select option { background: #ffffff; }
       <div class="topbar-badge b-gray" id="page-badge"></div>
     </div>
     <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" id="export-btn" style="display:none" onclick="openExportModal(S.page)">↓ Export</button>
       <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Refresh</button>
       <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
     </div>
@@ -545,6 +588,10 @@ function renderContent() {
   document.getElementById('page-title').textContent = getPageTitle();
   document.getElementById('page-badge').textContent = `${data.length} files`;
 
+  // Show Export button only on freight-type pages
+  const exportBtn = document.getElementById('export-btn');
+  if (exportBtn) exportBtn.style.display = FREIGHT_TYPES.includes(S.page) ? '' : 'none';
+
   // Filter by search
   const q = S.search.toLowerCase();
   const filtered = data.filter(r => !q || [r.fileNumber,r.clientName,r.container,r.airwaybill,r.truckNo,r.trucking,r.goods].some(v=>(v||'').toLowerCase().includes(q)));
@@ -808,6 +855,266 @@ async function updateInvoiceStatus(type, id) {
 }
 
 // ════════════════════════════════════════
+// EXPORT
+// ════════════════════════════════════════
+const FREIGHT_TYPES = ['sea','air','road','clearing'];
+
+const EXPORT_FIELDS = {
+  sea: [
+    { label:'File Number',  key:'fileNumber' },
+    { label:'Container No', key:'_containerNos' },
+    { label:'Truck Company',key:'_truckCompanies' },
+    { label:'Truck No',     key:'_truckNos' },
+    { label:'BL Number',    key:'bl' },
+  ],
+  air: [
+    { label:'File Number',  key:'fileNumber' },
+    { label:'Client',       key:'clientName' },
+    { label:'Airwaybill',   key:'airwaybill' },
+    { label:'Airline',      key:'airline' },
+    { label:'Status',       key:'status' },
+  ],
+  road: [
+    { label:'File Number',  key:'fileNumber' },
+    { label:'Client',       key:'clientName' },
+    { label:'Truck No',     key:'truckNo' },
+    { label:'Truck Company',key:'trucking' },
+    { label:'Goods',        key:'goods' },
+  ],
+  clearing: [
+    { label:'File Number',  key:'fileNumber' },
+    { label:'Client',       key:'clientName' },
+    { label:'BL Number',    key:'bl' },
+    { label:'Goods',        key:'goods' },
+    { label:'Status',       key:'status' },
+  ],
+};
+
+const EX = { type: null, selectedIds: new Set(), dateFrom: '', dateTo: '', activePreset: '' };
+
+const PRESETS = (() => {
+  const y = new Date().getFullYear();
+  return [
+    { label:'Q1', from:`${y}-01-01`, to:`${y}-03-31` },
+    { label:'Q2', from:`${y}-04-01`, to:`${y}-06-30` },
+    { label:'Q3', from:`${y}-07-01`, to:`${y}-09-30` },
+    { label:'Q4', from:`${y}-10-01`, to:`${y}-12-31` },
+    { label:'H1', from:`${y}-01-01`, to:`${y}-06-30` },
+    { label:'H2', from:`${y}-07-01`, to:`${y}-12-31` },
+    { label:`${y}`,   from:`${y}-01-01`,   to:`${y}-12-31` },
+    { label:`${y-1}`, from:`${y-1}-01-01`, to:`${y-1}-12-31` },
+  ];
+})();
+
+function applyPreset(label) {
+  const p = PRESETS.find(x => x.label === label);
+  if (!p) return;
+  EX.dateFrom = p.from;
+  EX.dateTo   = p.to;
+  EX.activePreset = label;
+  document.getElementById('ex-date-from').value = p.from;
+  document.getElementById('ex-date-to').value   = p.to;
+  document.querySelectorAll('.preset-btn[data-preset]').forEach(b =>
+    b.classList.toggle('active', b.dataset.preset === label));
+  _refreshList();
+}
+
+function clearDateFilter() {
+  EX.dateFrom = ''; EX.dateTo = ''; EX.activePreset = '';
+  document.getElementById('ex-date-from').value = '';
+  document.getElementById('ex-date-to').value   = '';
+  document.querySelectorAll('.preset-btn[data-preset]').forEach(b => b.classList.remove('active'));
+  _refreshList();
+}
+
+function onDateInput() {
+  EX.dateFrom = document.getElementById('ex-date-from').value;
+  EX.dateTo   = document.getElementById('ex-date-to').value;
+  EX.activePreset = '';
+  document.querySelectorAll('.preset-btn[data-preset]').forEach(b => b.classList.remove('active'));
+  _refreshList();
+}
+
+function _dateInRange(r) {
+  if (!EX.dateFrom && !EX.dateTo) return true;
+  const raw = (r.docsRcvd || '').slice(0, 10);
+  if (!raw) return false;
+  if (EX.dateFrom && raw < EX.dateFrom) return false;
+  if (EX.dateTo   && raw > EX.dateTo)   return false;
+  return true;
+}
+
+function openExportModal(type) {
+  if (!FREIGHT_TYPES.includes(type)) return;
+  EX.type = type;
+  EX.dateFrom = ''; EX.dateTo = ''; EX.activePreset = '';
+  EX.selectedIds = new Set(S.all.filter(r => r.type === type).map(r => r.id));
+  _renderExportModal();
+  document.getElementById('export-overlay').classList.add('open');
+}
+
+function closeExportModal() {
+  document.getElementById('export-overlay').classList.remove('open');
+}
+
+function handleExportOverlayClick(e) {
+  if (e.target === document.getElementById('export-overlay')) closeExportModal();
+}
+
+function _renderExportModal() {
+  const type = EX.type;
+  const meta = TYPE_META[type];
+  const fields = EXPORT_FIELDS[type];
+  const all = S.all.filter(r => r.type === type);
+
+  document.getElementById('export-modal-title').innerHTML =
+    `<span class="badge ${meta.badge}" style="font-size:11px">${meta.icon} ${meta.label}</span> Export`;
+  document.getElementById('export-modal-sub').textContent = `${all.length} total records`;
+
+  document.getElementById('export-fields-preview').innerHTML =
+    fields.map(f => `<span class="export-field-tag">${f.label}</span>`).join('');
+
+  const presetBtns = PRESETS.map(p =>
+    `<button class="preset-btn" data-preset="${p.label}" onclick="applyPreset('${p.label}')">${p.label}</button>`
+  ).join('');
+
+  document.getElementById('export-date-section').innerHTML = `
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">
+      Filter by Docs Received
+    </div>
+    <div class="export-presets" style="margin-bottom:10px">
+      ${presetBtns}
+      <button class="preset-btn" onclick="clearDateFilter()" style="color:var(--red);border-color:rgba(248,81,73,.25)">✕ Clear</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <input type="date" class="export-date-input" id="ex-date-from" oninput="onDateInput()" placeholder="From">
+      <span class="export-date-sep">→</span>
+      <input type="date" class="export-date-input" id="ex-date-to" oninput="onDateInput()" placeholder="To">
+    </div>`;
+
+  _refreshList();
+}
+
+function _refreshList() {
+  const all = S.all.filter(r => r.type === EX.type);
+  const visible = all.filter(_dateInRange);
+  // Auto-select everything currently in range
+  EX.selectedIds = new Set(visible.map(r => r.id));
+
+  const el = document.getElementById('export-list');
+  if (!all.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted);font-size:12px">No ${TYPE_META[EX.type].label} records loaded yet.</div>`;
+  } else if (!visible.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted);font-size:12px">No records match the selected date range.</div>`;
+  } else {
+    el.innerHTML = visible.map(r => {
+      const checked = EX.selectedIds.has(r.id);
+      const dateStr = r.docsRcvd ? fmtDate(r.docsRcvd) : '';
+      return `<label class="export-item${checked?' sel':''}" onclick="_toggleExportItem('${r.id}')">
+        <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();_toggleExportItem('${r.id}')">
+        <span class="export-item-fn">${r.fileNumber||'—'}</span>
+        ${dateStr ? `<span style="font-size:10px;font-family:var(--mono);color:var(--muted);flex-shrink:0">${dateStr}</span>` : ''}
+        <span class="export-item-client">${r.clientName||'—'}</span>
+      </label>`;
+    }).join('');
+  }
+
+  const isFiltered = EX.dateFrom || EX.dateTo;
+  document.getElementById('export-count-label').innerHTML = isFiltered
+    ? `${EX.selectedIds.size} selected &nbsp;·&nbsp; <span style="color:var(--yellow)">${visible.length} in range</span> / ${all.length}`
+    : `${EX.selectedIds.size} of ${all.length} selected`;
+}
+
+function _toggleExportItem(id) {
+  if (EX.selectedIds.has(id)) EX.selectedIds.delete(id);
+  else EX.selectedIds.add(id);
+  // Re-render just the item and count — don't blow away the whole list
+  document.querySelectorAll('.export-item').forEach(el => {
+    const cb = el.querySelector('input[type=checkbox]');
+    if (!cb) return;
+    const itemId = el.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+    if (!itemId) return;
+    const sel = EX.selectedIds.has(itemId);
+    el.classList.toggle('sel', sel);
+    cb.checked = sel;
+  });
+  const all = S.all.filter(r => r.type === EX.type);
+  const visible = all.filter(_dateInRange);
+  const isFiltered = EX.dateFrom || EX.dateTo;
+  document.getElementById('export-count-label').innerHTML = isFiltered
+    ? `${EX.selectedIds.size} selected &nbsp;·&nbsp; <span style="color:var(--yellow)">${visible.length} in range</span> / ${all.length}`
+    : `${EX.selectedIds.size} of ${all.length} selected`;
+}
+
+function exportSelectAll() {
+  S.all.filter(r => r.type === EX.type).filter(_dateInRange).forEach(r => EX.selectedIds.add(r.id));
+  _refreshList();
+}
+
+function exportDeselectAll() {
+  EX.selectedIds = new Set();
+  _refreshList();
+}
+
+function _getExportValue(r, key) {
+  if (key === '_containerNos') {
+    const ctrs = containersForFile(r.fileNumber);
+    return ctrs.length ? ctrs.map(c=>c.containerNo||'').filter(Boolean).join(' / ') : (r.container||'');
+  }
+  if (key === '_truckNos') {
+    const ctrs = containersForFile(r.fileNumber);
+    const fromCtrs = ctrs.map(c=>c.truckNo||'').filter(Boolean).join(' / ');
+    return fromCtrs || r.truckNo || '';
+  }
+  if (key === '_truckCompanies') {
+    const ctrs = containersForFile(r.fileNumber);
+    const fromCtrs = ctrs.map(c=>c.trucking||'').filter(Boolean).join(' / ');
+    return fromCtrs || r.trucking || '';
+  }
+  const v = r[key];
+  return v || '';
+}
+
+function downloadExcel() {
+  if (!EX.selectedIds.size) { toast('Select at least one record to export', 'error'); return; }
+  if (typeof XLSX === 'undefined') { toast('SheetJS not loaded — check your connection', 'error'); return; }
+
+  const type = EX.type;
+  const fields = EXPORT_FIELDS[type];
+  const records = S.all.filter(r => r.type === type && EX.selectedIds.has(r.id));
+
+  const headers = fields.map(f => f.label);
+  const rows = records.map(r => fields.map(f => _getExportValue(r, f.key)));
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+  // Auto-fit column widths based on content
+  ws['!cols'] = headers.map((h, i) => {
+    const maxLen = Math.max(
+      h.length,
+      ...rows.map(row => (row[i] || '').toString().length)
+    );
+    return { wch: Math.min(maxLen + 2, 60) };
+  });
+
+  // Freeze header row
+  ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
+
+  XLSX.utils.book_append_sheet(wb, ws, TYPE_META[type].label);
+
+  const date = new Date().toISOString().slice(0,10);
+  const rangeStr = (EX.dateFrom && EX.dateTo)
+    ? `_${EX.dateFrom}_to_${EX.dateTo}`
+    : (EX.activePreset ? `_${EX.activePreset}` : `_${date}`);
+  const fname = `PIC_${TYPE_META[type].label.replace(/ /g,'_')}${rangeStr}.xlsx`;
+  XLSX.writeFile(wb, fname);
+
+  toast(`✅ Exported ${records.length} ${TYPE_META[type].label} records`);
+  closeExportModal();
+}
+
+// ════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════
 loadAll();
@@ -829,5 +1136,30 @@ function toggleTheme() {
 })();
 
 </script>
+<!-- EXPORT MODAL -->
+<div class="export-overlay" id="export-overlay" onclick="handleExportOverlayClick(event)">
+  <div class="export-modal" onclick="event.stopPropagation()">
+    <div class="export-modal-hd">
+      <div>
+        <div class="export-modal-title" id="export-modal-title"></div>
+        <div class="export-modal-sub" id="export-modal-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeExportModal()">✕</button>
+    </div>
+    <div class="export-fields-preview" id="export-fields-preview"></div>
+    <div class="export-date-section" id="export-date-section"></div>
+    <div class="export-toolbar">
+      <button class="btn btn-ghost btn-sm" onclick="exportSelectAll()">Select All</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportDeselectAll()">Deselect All</button>
+      <span class="export-count-label" id="export-count-label"></span>
+    </div>
+    <div class="export-body" id="export-list"></div>
+    <div class="export-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeExportModal()">Cancel</button>
+      <button class="btn btn-export" onclick="downloadExcel()">⬇ Download Excel</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
